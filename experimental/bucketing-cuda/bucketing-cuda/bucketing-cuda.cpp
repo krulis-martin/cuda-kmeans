@@ -61,9 +61,9 @@ void getCudaExecParameters(bpp::ProgramArguments& args, CudaExecParameters& exec
 template<typename F = float, class LAYOUT = SoALayoutTrait<32>, int EMUL = false>
 void createAtomicAlgorithms(std::map<std::string, std::unique_ptr<IBucketingAlgorithm<F>>> &algorithms, CudaExecParameters& cudaExecParams)
 {
-	algorithms["cuda_atomic_dim"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicDimKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
-	algorithms["cuda_atomic_wdim"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicWarpDimKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
-	algorithms["cuda_atomic"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
+	algorithms["cuda_atomic_point"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicPointKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
+	algorithms["cuda_atomic_warp"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicWarpKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
+	algorithms["cuda_atomic_fine"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicFineKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
 	algorithms["cuda_atomic_shm"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicShmKernel<F, LAYOUT, EMUL>>>(cudaExecParams);
 	algorithms["cuda_atomic_shm2"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicShm2Kernel<F, LAYOUT, EMUL>>>(cudaExecParams);
 	algorithms["cuda_fake"] = std::make_unique<CudaBucketingAlgorithm<F, LAYOUT, AtomicFakeKernel<F, LAYOUT, EMUL>>>(cudaExecParams);

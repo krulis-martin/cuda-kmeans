@@ -193,7 +193,7 @@ void BaseKernel<F, LAYOUT>::run(const ProblemInstance<F> &in, CudaExecParameters
  * Simple kernel that launches one thread per source point (n) and performs the additions of the whole vector using atomic instructions.
  */
 template<typename F, class LAYOUT, class ATOMIC = AtomicTrait<F>>
-__global__ void atomicDimKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
+__global__ void atomicPointKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
 	std::uint32_t dim, std::uint32_t k, std::uint32_t n, std::uint32_t privCopies)
 {
 	result = privatizeResultPointer<F, LAYOUT>(result, dim, k, privCopies);
@@ -212,15 +212,15 @@ __global__ void atomicDimKernel(const F* __restrict__ data, const std::uint32_t*
 
 
 template<typename F, class LAYOUT, int EMUL>
-void AtomicDimKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
+void AtomicPointKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = ((unsigned int)in.n + exec.itemsPerThread - 1) / exec.itemsPerThread;
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (EMUL) {
-		atomicDimKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicPointKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	else {
-		atomicDimKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicPointKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	runReducePrivCopiesKernel<F, LAYOUT>(in, exec);
 }
@@ -232,7 +232,7 @@ void AtomicDimKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExe
  * Simple kernel that launches one warp of threads per source point (n) and performs the additions using atomic instructions.
  */
 template<typename F, class LAYOUT, class ATOMIC = AtomicTrait<F>>
-__global__ void atomicWarpDimKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
+__global__ void atomicWarpKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
 	std::uint32_t dim, std::uint32_t k, std::uint32_t n, std::uint32_t privCopies)
 {
 	result = privatizeResultPointer<F, LAYOUT>(result, dim, k, privCopies);
@@ -252,15 +252,15 @@ __global__ void atomicWarpDimKernel(const F* __restrict__ data, const std::uint3
 
 
 template<typename F, class LAYOUT, int EMUL>
-void AtomicWarpDimKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
+void AtomicWarpKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = ((unsigned int)(in.n * 32) + exec.itemsPerThread - 1) / exec.itemsPerThread;
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (EMUL) {
-		atomicWarpDimKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicWarpKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	else {
-		atomicWarpDimKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicWarpKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	runReducePrivCopiesKernel<F, LAYOUT>(in, exec);
 }
@@ -273,7 +273,7 @@ void AtomicWarpDimKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, Cud
  * Simple kernel that launches one thread per source value (n x dim) and performs the additions atomically.
  */
 template<typename F, class LAYOUT, class ATOMIC = AtomicTrait<F>>
-__global__ void atomicKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
+__global__ void atomicFineKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ result,
 	std::uint32_t dim, std::uint32_t k, std::uint32_t n, std::uint32_t privCopies)
 {
 	result = privatizeResultPointer<F, LAYOUT>(result, dim, k, privCopies);
@@ -294,15 +294,15 @@ __global__ void atomicKernel(const F* __restrict__ data, const std::uint32_t* __
 
 
 template<typename F, class LAYOUT, int EMUL>
-void AtomicKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
+void AtomicFineKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = ((unsigned int)(in.n * in.dim) + exec.itemsPerThread - 1) / exec.itemsPerThread;
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (EMUL) {
-		atomicKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicFineKernel<F, LAYOUT, AtomicEmulTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	else {
-		atomicKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
+		atomicFineKernel<F, LAYOUT, AtomicTrait<F>><<<exec.blockCount, exec.blockSize>>>(in.data, in.indices, in.result, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	runReducePrivCopiesKernel<F, LAYOUT>(in, exec);
 }
@@ -559,9 +559,9 @@ void AtomicShmFakeKernel<F, LAYOUT, EMUL>::run(const ProblemInstance<F>& in, Cud
 template<typename F, class LAYOUT, int EMUL>
 void instantiateAtomicKernelRunnerTemplates(ProblemInstance<F> &instance, CudaExecParameters &exec)
 {
-	AtomicDimKernel<F, LAYOUT, EMUL>::run(instance, exec);
-	AtomicWarpDimKernel<F, LAYOUT, EMUL>::run(instance, exec);
-	AtomicKernel<F, LAYOUT, EMUL>::run(instance, exec);
+	AtomicPointKernel<F, LAYOUT, EMUL>::run(instance, exec);
+	AtomicWarpKernel<F, LAYOUT, EMUL>::run(instance, exec);
+	AtomicFineKernel<F, LAYOUT, EMUL>::run(instance, exec);
 	AtomicShmKernel<F, LAYOUT, EMUL>::run(instance, exec);
 	AtomicShm2Kernel<F, LAYOUT, EMUL>::run(instance, exec);
 	AtomicFakeKernel<F, LAYOUT, EMUL>::run(instance, exec);

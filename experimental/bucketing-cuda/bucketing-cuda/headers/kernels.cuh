@@ -54,9 +54,9 @@ public:\
 	static void run(const ProblemInstance<F>& in, CudaExecParameters& exec);\
 };
 
-DECLARE_KERNEL(AtomicDimKernel)
-DECLARE_KERNEL(AtomicWarpDimKernel)
-DECLARE_KERNEL(AtomicKernel)
+DECLARE_KERNEL(AtomicPointKernel)
+DECLARE_KERNEL(AtomicWarpKernel)
+DECLARE_KERNEL(AtomicFineKernel)
 DECLARE_KERNEL(AtomicShmKernel)
 DECLARE_KERNEL(AtomicShm2Kernel)
 DECLARE_KERNEL(AtomicFakeKernel)

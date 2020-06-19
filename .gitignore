@@ -1,0 +1,6 @@
+.vs
+.tmp
+/experimental/bucketing-cuda/bucketing-cuda/bucketing-cuda.vcxproj.user
+/experimental/bucketing-cuda/bin
+/experimental/k-means/k-means/k-means.vcxproj.user
+/experimental/k-means/bin

@@ -174,8 +174,8 @@ void runDivideMeansKernel(F* __restrict__ means, const IDX_T* __restrict__ clust
 
 
 /**
- * Baseline kernel. Runs one thread for each result float value that iterates over n values in its dimension,
- * filters out irrelevant values, and sums the relevant ones.
+ * Baseline kernel. Runs one thread for each point. Thread computes distances to all means and
+ * determines the nearest one.
  */
 template<typename F = float, typename IDX_T = std::uint32_t, class LAYOUT = AoSLayoutPolicy<>,
 	class LAYOUT_MEANS = AoSLayoutPolicy<>, class METRIC = EuclideanMetricPolicy<F, LAYOUT, LAYOUT_MEANS>>
@@ -215,7 +215,7 @@ void BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const Ass
  */
 template<typename F = float, typename IDX_T = std::uint32_t, class LAYOUT = AoSLayoutPolicy<>,
 	class LAYOUT_MEANS = AoSLayoutPolicy<>, int shmK, int shmDim>
-__global__ void cachedAssignmentKernel(const F* __restrict__ data, const F* __restrict__ means, IDX_T* __restrict__ assignment,
+__global__ void cachedFixedAssignmentKernel(const F* __restrict__ data, const F* __restrict__ means, IDX_T* __restrict__ assignment,
 	IDX_T dim, IDX_T k, IDX_T n)
 {
 	volatile __shared__ F shmMeans[shmDim][shmK];
@@ -274,44 +274,44 @@ __global__ void cachedAssignmentKernel(const F* __restrict__ data, const F* __re
 
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC, int shmDim, int shmK>
-void cachedAssignmentRunnerHelper(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void cachedFixedAssignmentRunnerHelper(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = (unsigned int)(in.n);
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (in.k % shmK != 0) throw std::runtime_error("K is not multiple of shmK constant! This is just a prototype (requires aligned parameters).");
 	if (in.dim % shmDim != 0) throw std::runtime_error("Dim is not multiple of shmDim constant! This is just a prototype (requires aligned parameters).");
-	cachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize>>>(in.data, in.means, in.assignment, in.dim, in.k, in.n);
+	cachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize>>>(in.data, in.means, in.assignment, in.dim, in.k, in.n);
 }
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC, int shmDim>
-void cachedAssignmentRunnerHelper2(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void cachedFixedAssignmentRunnerHelper2(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.k >= 32) {
-		cachedAssignmentRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 32>(in, exec);
+		cachedFixedAssignmentRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 32>(in, exec);
 	}
 	else {
-		cachedAssignmentRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 16>(in, exec);
+		cachedFixedAssignmentRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 16>(in, exec);
 	}
 }
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC>
-void CachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void CachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.dim >= 16) {
-		cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
+		cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
 	}
 	else {
 		switch (in.dim) {
 		case 4:
-			cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 4>(in, exec); break;
+			cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 4>(in, exec); break;
 		case 6:
-			cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 6>(in, exec); break;
+			cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 6>(in, exec); break;
 		case 8:
-			cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 8>(in, exec); break;
+			cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 8>(in, exec); break;
 		case 10:
-			cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 10>(in, exec); break;
+			cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 10>(in, exec); break;
 		case 12:
-			cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 12>(in, exec); break;
+			cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 12>(in, exec); break;
 		default:
 			throw std::runtime_error("Unsupported data dimensions. This is just a prototype.");
 		}
@@ -483,98 +483,7 @@ cached2AssignmentKernel(const F * __restrict__ data, const F * __restrict__ mean
 	}
 
 	assignment[idx] = nearestIdx;
-
-/*
-	extern __shared__ float shm[];
-	F *shmData = (F*)shm;
-	F *shmMeans = shmData + (dim * blockDim.x); // sizeof shmData (blockDim.x = points being cached)
-	F *shmDists = shmMeans + (dim * blockDim.y); // sizeof shmMeans (blockDim.y = means being cached)
-	IDX_T* shmNearests = (IDX_T*)(shmDists + blockDim.x * blockDim.y); // shmDists - each thread stores on one value
-
-	auto precomputedData = LAYOUT::precomputeConstants(n, dim);
-	auto precomputedMeans = LAYOUT_MEANS::precomputeConstants(k, dim);
-
-	IDX_T blockSize = blockDim.x * blockDim.y;
-	IDX_T tIdx = threadIdx.y * blockDim.x + threadIdx.x;
-//	IDX_T lastIdx = (blockIdx.x+1) * blockSize;
-//	for (IDX_T idx = threadIdx.x + blockIdx.x * blockSize; idx < lastIdx; idx += blockDim.x) { // blockDim.x ~ index of point being processed
-	IDX_T idx = threadIdx.x + blockIdx.x * blockDim.x;
-
-		// Cache points data in shm
-		for (IDX_T d = threadIdx.y; d < dim; d += blockDim.y) {
-			shmData[d * blockDim.x + threadIdx.x] = LAYOUT::at(data, idx, d, precomputedData);
-		}
-
-		__syncthreads();
-
-		F dist = (F)100000000;
-		IDX_T nearest = k;
-		for (IDX_T kOffset = 0; kOffset < k; kOffset += blockDim.y) {
-			// Cache means in shm
-			IDX_T totalMeansSize = (dim * blockDim.y);
-			for (IDX_T m = tIdx; m < totalMeansSize; m += blockSize) {
-				shmMeans[m] = LAYOUT_MEANS::at(means, kOffset + m % blockDim.y, m / blockDim.y, precomputedMeans);
-			}
-
-			__syncthreads();
-
-			// Compute distance between x point and y mean
-			F sum = (F)0.0;
-			const F* sd = shmData + threadIdx.x;
-			const F* sm = shmMeans + threadIdx.y;
-			for (IDX_T d = 0; d < dim; ++d) {
-//				F diff = shmData[d * blockDim.x + threadIdx.x] - shmMeans[d * blockDim.y + threadIdx.y];
-				F diff = *sd - *sm;
-				sd += blockDim.x;
-				sm += blockDim.y;
-				sum += diff * diff;
-			}
-			sum = sqrtf(sum);
-
-			// Update the min distances + nearest indices
-			if (sum < dist) {
-				dist = sum;
-				nearest = kOffset + threadIdx.y;
-			}
-
-			__syncthreads();
-		}
-
-		// 
-		shmDists[tIdx] = dist;
-		shmNearests[tIdx] = nearest;
-
-		__syncthreads();
-
-		if (threadIdx.y == 0) {
-			for (IDX_T i = threadIdx.x + blockDim.x; i < blockSize; i += blockDim.x) {
-				if (shmDists[i] < dist) {
-					dist = shmDists[i];
-					nearest = shmNearests[i];
-				}
-			}
-			assignment[idx] = nearest;
-		}
-
-//		__syncthreads();
-//	}
-*/
 }
-
-/*
-template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC>
-void Cached2AssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
-{
-	if (in.n % exec.blockSize) {
-		throw std::runtime_error("Number of items must be divisible by block size (this is just a prototype).");
-	}
-	unsigned int shmN = exec.itemsPerThread;
-	unsigned int shmK = exec.blockSize / shmN;
-	unsigned totalShm = in.dim * (shmN + shmK) * sizeof(F) + shmN * shmK * (sizeof(F) + sizeof(IDX_T));
-	exec.blockCount = ((unsigned int)(in.n) + shmN - 1) / shmN;
-	cached2AssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS><<<exec.blockCount, dim3(shmN, shmK), totalShm>>>(in.data, in.means, in.assignment, in.dim, in.k, in.n);
-}
-*/
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC, int shmDim, int shmK>
 void cached2AssignmentRunnerHelper(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
@@ -586,7 +495,7 @@ void cached2AssignmentRunnerHelper(const AssignmentProblemInstance<F, IDX_T>& in
 	unsigned int desiredShm = in.dim * exec.blockSize * sizeof(F);
 	if (exec.sharedMemorySize < desiredShm + shmDim*shmK*sizeof(F)) throw std::runtime_error("Insufficient shared memory given.");
 	exec.sharedMemorySize = desiredShm;
-	cachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize, exec.sharedMemorySize>>>(
+	cachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize, exec.sharedMemorySize>>>(
 		in.data, in.means, in.assignment, in.dim, in.k, in.n);
 }
 
@@ -605,7 +514,7 @@ template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class MET
 void Cached2AssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.dim >= 16) {
-		cachedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
+		cachedFixedAssignmentRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
 	}
 	else {
 		switch (in.dim) {
@@ -798,7 +707,7 @@ template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class MET
 void BestCachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.k < 64 || (in.dim < 8 && in.k < 1024) || in.dim > 64) {
-		CachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(in, exec);
+		CachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(in, exec);
 	}
 	else {
 		exec.itemsPerThread = 64;
@@ -815,7 +724,7 @@ void BestCachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(con
  * Simple kernel that launches one thread per source point (n) and performs the additions of the whole vector using atomic instructions.
  */
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class ATOMIC = AtomicPolicy<F>>
-__global__ void updateAtomicDimKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ means, IDX_T * __restrict__ clusterSizes,
+__global__ void updateAtomicPointKernel(const F* __restrict__ data, const std::uint32_t* __restrict__ indices, F* __restrict__ means, IDX_T * __restrict__ clusterSizes,
 	std::uint32_t dim, std::uint32_t k, std::uint32_t n, std::uint32_t privCopies)
 {
 	means = privatizeResultPointer<F, IDX_T, LAYOUT_MEANS>(means, dim, k, privCopies);
@@ -835,16 +744,16 @@ __global__ void updateAtomicDimKernel(const F* __restrict__ data, const std::uin
 
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, int EMUL>
-void UpdateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void UpdateAtomicPointKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = ((unsigned int)in.n + exec.itemsPerThread - 1) / exec.itemsPerThread;
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (EMUL) {
-		updateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicEmulPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
+		updateAtomicPointKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicEmulPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
 			in.data, in.assignment, in.means, in.clusterSizes, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	else {
-		updateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
+		updateAtomicPointKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
 			in.data, in.assignment, in.means, in.clusterSizes, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	runReducePrivCopiesKernel<F, IDX_T, LAYOUT_MEANS>(in.means, in.dim, in.k, exec);
@@ -859,7 +768,7 @@ void UpdateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const Upda
  * Simple kernel that launches one thread per source value (n x dim) and performs the additions atomically.
  */
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class ATOMIC = AtomicPolicy<F>>
-__global__ void updateAtomicKernel(const F * __restrict__ data, const std::uint32_t * __restrict__ indices, F * __restrict__ means, IDX_T * __restrict__ clusterSizes,
+__global__ void updateAtomicFineKernel(const F * __restrict__ data, const std::uint32_t * __restrict__ indices, F * __restrict__ means, IDX_T * __restrict__ clusterSizes,
 	std::uint32_t dim, std::uint32_t k, std::uint32_t n, std::uint32_t privCopies)
 {
 	means = privatizeResultPointer<F, IDX_T, LAYOUT_MEANS>(means, dim, k, privCopies);
@@ -883,16 +792,16 @@ __global__ void updateAtomicKernel(const F * __restrict__ data, const std::uint3
 
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, int EMUL>
-void UpdateAtomicKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void UpdateAtomicFineKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = ((unsigned int)(in.n * in.dim) + exec.itemsPerThread - 1) / exec.itemsPerThread;
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (EMUL) {
-		updateAtomicKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicEmulPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
+		updateAtomicFineKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicEmulPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
 			in.data, in.assignment, in.means, in.clusterSizes, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	else {
-		updateAtomicKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
+		updateAtomicFineKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, AtomicPolicy<F>><<<exec.blockCount, exec.blockSize>>>(
 			in.data, in.assignment, in.means, in.clusterSizes, in.dim, in.k, in.n, exec.privatizedCopies);
 	}
 	runReducePrivCopiesKernel<F, IDX_T, LAYOUT_MEANS>(in.means, in.dim, in.k, exec);
@@ -971,10 +880,10 @@ void UpdateAtomicShmKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, EMUL>::run(const Upda
 
 
 /**
- * Fused kernel (cached assignment + atomic dim), 1 thread ~ point
+ * Fused kernel (cached fixed assignment kernel fused with atomic point kernel), 1 thread ~ point
  */
 template<typename F = float, typename IDX_T = std::uint32_t, class LAYOUT = AoSLayoutPolicy<>, class LAYOUT_MEANS, int shmK, int shmDim>
-__global__ void fusedCachedKernel(const F* __restrict__ data, const F* __restrict__ meansIn, F* __restrict__ meansOut, IDX_T *clusterSizes,
+__global__ void fusedCachedFixedKernel(const F* __restrict__ data, const F* __restrict__ meansIn, F* __restrict__ meansOut, IDX_T *clusterSizes,
 	IDX_T dim, IDX_T k, IDX_T n, std::uint32_t privCopies)
 {
 	volatile __shared__ F shmMeans[shmDim][shmK];
@@ -1040,13 +949,13 @@ __global__ void fusedCachedKernel(const F* __restrict__ data, const F* __restric
 
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC, int shmDim, int shmK>
-void fusedCachedKernelRunnerHelper(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void fusedCachedFixedKernelRunnerHelper(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	unsigned int threads = (unsigned int)(in.n);
 	exec.blockCount = (threads + exec.blockSize - 1) / exec.blockSize;
 	if (in.k % shmK != 0) throw std::runtime_error("K is not multiple of shmK constant! This is just a prototype (requires aligned parameters).");
 	if (in.dim % shmDim != 0) throw std::runtime_error("Dim is not multiple of shmDim constant! This is just a prototype (requires aligned parameters).");
-	fusedCachedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize>>>(
+	fusedCachedFixedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, shmK, shmDim><<<exec.blockCount, exec.blockSize>>>(
 		in.data, in.meansIn, in.meansOut, in.clusterSizes, in.dim, in.k, in.n, exec.privatizedCopies);
 
 	runReducePrivCopiesKernel<F, IDX_T, LAYOUT_MEANS>(in.meansOut, in.dim, in.k, exec);
@@ -1054,34 +963,34 @@ void fusedCachedKernelRunnerHelper(const FusedProblemInstance<F, IDX_T>& in, Cud
 }
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC, int shmDim>
-void fusedCachedKernelRunnerHelper2(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void fusedCachedFixedKernelRunnerHelper2(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.k >= 32) {
-		fusedCachedKernelRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 32>(in, exec);
+		fusedCachedFixedKernelRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 32>(in, exec);
 	}
 	else {
-		fusedCachedKernelRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 16>(in, exec);
+		fusedCachedFixedKernelRunnerHelper<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, shmDim, 16>(in, exec);
 	}
 }
 
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC>
-void FusedCachedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
+void FusedCachedFixedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec)
 {
 	if (in.dim >= 16) {
-		fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
+		fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 16>(in, exec);
 	}
 	else {
 		switch (in.dim) {
 		case 4:
-			fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 4>(in, exec); break;
+			fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 4>(in, exec); break;
 		case 6:
-			fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 6>(in, exec); break;
+			fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 6>(in, exec); break;
 		case 8:
-			fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 8>(in, exec); break;
+			fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 8>(in, exec); break;
 		case 10:
-			fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 10>(in, exec); break;
+			fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 10>(in, exec); break;
 		case 12:
-			fusedCachedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 12>(in, exec); break;
+			fusedCachedFixedKernelRunnerHelper2<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, 12>(in, exec); break;
 		default:
 			throw std::runtime_error("Unsupported data dimensions. This is just a prototype.");
 		}
@@ -1093,7 +1002,9 @@ void FusedCachedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(const FusedP
 
 
 /**
- *
+ * Fused kernel (cached regs assignment kernel fused with specific atomic update that is based on atomic_warp,
+ * but the size of the thread group cooperating is configurable),
+ * (itemsPerThread*regsCount) threads cooperate on one point in update
  */
 template<typename F = float, typename IDX_T = std::uint32_t, class LAYOUT = AoSLayoutPolicy<>,
 	class LAYOUT_MEANS = AoSLayoutPolicy<>, int regN = 1, int regK = 1, int dimBlock = 1>
@@ -1290,7 +1201,7 @@ template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class MET
 void instantiateAssignmentKernelRunnerTemplates(AssignmentProblemInstance<F,IDX_T> &instance, CudaExecParameters &exec)
 {
 	BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
-	CachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
+	CachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
 	CachedAllMeansAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
 	Cached2AssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
 	CachedRegsAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(instance, exec);
@@ -1308,7 +1219,7 @@ void instantiateKernelRunnerTemplates()
 	instantiateAssignmentKernelRunnerTemplates<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>(assignmentInstance, exec);
 
 	FusedProblemInstance<F, IDX_T> fusedInstance(nullptr, nullptr, nullptr, nullptr, 0, 0, 0);
-	FusedCachedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(fusedInstance, exec);
+	FusedCachedFixedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(fusedInstance, exec);
 	FusedCachedRegsKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>::run(fusedInstance, exec);
 }
 
@@ -1320,8 +1231,8 @@ void instantiateKernelRunnerTemplatesHelper1()
 	UpdateProblemInstance<F, IDX_T> updateInstance(nullptr, nullptr, nullptr, nullptr, 0, 0, 0);
 	CudaExecParameters exec;
 
-	UpdateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>::run(updateInstance, exec);
-	UpdateAtomicKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>::run(updateInstance, exec);
+	UpdateAtomicPointKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>::run(updateInstance, exec);
+	UpdateAtomicFineKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>::run(updateInstance, exec);
 	UpdateAtomicShmKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>::run(updateInstance, exec);
 
 	instantiateKernelRunnerTemplates<F, IDX_T, LAYOUT, LAYOUT_MEANS, EuclideanMetricPolicy<F, LAYOUT, LAYOUT_MEANS>>();

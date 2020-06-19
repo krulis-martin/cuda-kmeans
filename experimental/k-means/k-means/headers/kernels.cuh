@@ -86,7 +86,7 @@ public:\
 };
 
 DECLARE_ASSIGNEMNT_KERNEL(BaseAssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(CachedAssignmentKernel)
+DECLARE_ASSIGNEMNT_KERNEL(CachedFixedAssignmentKernel)
 DECLARE_ASSIGNEMNT_KERNEL(CachedAllMeansAssignmentKernel)
 DECLARE_ASSIGNEMNT_KERNEL(Cached2AssignmentKernel)
 DECLARE_ASSIGNEMNT_KERNEL(CachedRegsAssignmentKernel)
@@ -100,8 +100,8 @@ public:\
 	static void run(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec);\
 };
 
-DECLARE_UPDATE_KERNEL(UpdateAtomicDimKernel)
-DECLARE_UPDATE_KERNEL(UpdateAtomicKernel)
+DECLARE_UPDATE_KERNEL(UpdateAtomicPointKernel)
+DECLARE_UPDATE_KERNEL(UpdateAtomicFineKernel)
 DECLARE_UPDATE_KERNEL(UpdateAtomicShmKernel)
 
 
@@ -112,7 +112,7 @@ public:\
 	static void run(const FusedProblemInstance<F, IDX_T>& in, CudaExecParameters& exec);\
 };
 
-DECLARE_FUSED_KERNEL(FusedCachedKernel)
+DECLARE_FUSED_KERNEL(FusedCachedFixedKernel)
 DECLARE_FUSED_KERNEL(FusedCachedRegsKernel)
 
 #endif

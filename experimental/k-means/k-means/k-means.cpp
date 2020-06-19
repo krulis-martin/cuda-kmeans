@@ -67,7 +67,7 @@ void run_assignment(bpp::ProgramArguments& args, std::vector<F> &data, std::vect
 	map_t algorithms;
 	algorithms["serial"] = std::make_unique<SerialAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>();
 	algorithms["cuda_base"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
-	algorithms["cuda_cached"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, CachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
+	algorithms["cuda_cached_fixed"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, CachedFixedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
 	algorithms["cuda_cached_means"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, CachedAllMeansAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
 	algorithms["cuda_cached2"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, Cached2AssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
 	algorithms["cuda_cached_regs"] = std::make_unique<CudaAssignmentAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, CachedRegsAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
@@ -129,10 +129,10 @@ void run_kmeans(bpp::ProgramArguments& args, std::vector<F>& data, std::vector<F
 	using map_t = std::map<std::string, std::unique_ptr<IKMeansAlgorithm<F>>>;
 	map_t algorithms;
 	algorithms["serial"] = std::make_unique<SerialKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>();
-	algorithms["cuda_base"] = std::make_unique<CudaKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>, UpdateAtomicDimKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>>>(cudaExecParams);
+	algorithms["cuda_base"] = std::make_unique<CudaKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>, UpdateAtomicPointKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>>>(cudaExecParams);
 	algorithms["cuda_base_shm"] = std::make_unique<CudaKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, BaseAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>, UpdateAtomicShmKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>>>(cudaExecParams);
 	algorithms["cuda_best"] = std::make_unique<CudaKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, BestCachedAssignmentKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>, UpdateAtomicShmKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS>>>(cudaExecParams);
-	algorithms["cuda_fused"] = std::make_unique<CudaFusedKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, FusedCachedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
+	algorithms["cuda_fused_fixed"] = std::make_unique<CudaFusedKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, FusedCachedFixedKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
 	algorithms["cuda_fused_regs"] = std::make_unique<CudaFusedKMeansAlgorithm<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC, FusedCachedRegsKernel<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>>(cudaExecParams);
 	algorithms["kmcuda"] = std::make_unique<KMCudaAdapter<F, IDX_T, LAYOUT, LAYOUT_MEANS, METRIC>>();
 

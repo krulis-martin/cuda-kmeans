@@ -1,12 +1,28 @@
 # Highly optimized CUDA implementation of k-means algorithm
 
-A novel, highly-optimized CUDA implementation of k-means algorithm. The approach documented in **Detailed Analysis and Optimization of CUDA K-means Algorithm** paper which was accepted to ICPP'20 conference (publishing in progress).
+A novel, highly-optimized CUDA implementation of the k-means clustering algorithm. The approach is documented in paper *Detailed Analysis and Optimization of CUDA K-means Algorithm*, currently accepted to ICPP'20 conference (in print).
 
-The repository currently holds the [experimental code](../../tree/master/experimental) used for measurements and all our [measured results](../../tree/master/results).
+This repository contains:
 
-Although the kernels may be used for further experiments, the code is not immediately ready to be used as library... but we are working on that.
+- [k-means imeplentation and experimental code](experimental/) used for benchmarking
+  - the actual [CUDA k-means](experimental/k-means/)
+  - a [microbenchmark](experiemental/bucketing-cuda/) of bucket-wise sum of matrices in CUDA
+- The [measured results](results/) for several recent GPUs
 
-## Rules of Utilization
+The code is ready to be extracted and used for other projects. We hope to provide wrappers for several popular programming and scientific computing environments (Python/numpy and R) in near future.
 
-The code is available under MIT license. If you find any part of this project useful for scientific research, please cite the paper mentioned above.
+## How fast is it?
+
+We measured a speedup between roughly 10x and 1000x (depending on data size and dimensionality) over the current best open-source implementations (kmcuda). Our approach does not use any indexing structures, and relies only on the low-level optimizations and raw throughput of the GPUs. For 1024 clusters on 2 million datapoints in 32 dimensions, the implementation can run one k-means iteration in around
+
+- **104ms** on nVidia GTX 980
+- **25ms** on nVidia V100 SMX2
+
+All collected measurements are [available here](results/).
+
+## License
+
+The code is available under MIT license.
+
+If you find any part of this project useful for your scientific research, please cite the paper mentioned above. (We will add a full citation when the paper is published).
 

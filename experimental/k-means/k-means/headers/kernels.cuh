@@ -78,19 +78,19 @@ template<typename F, typename IDX_T, class LAYOUT_MEANS>
 void runDivideMeansKernel(const UpdateProblemInstance<F, IDX_T>& in, CudaExecParameters& exec);
 
 
-#define DECLARE_ASSIGNEMNT_KERNEL(NAME)\
+#define DECLARE_ASSIGNMENT_KERNEL(NAME)\
 template<typename F, typename IDX_T, class LAYOUT, class LAYOUT_MEANS, class METRIC>\
 class NAME {\
 public:\
 	static void run(const AssignmentProblemInstance<F, IDX_T>& in, CudaExecParameters& exec);\
 };
 
-DECLARE_ASSIGNEMNT_KERNEL(BaseAssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(CachedFixedAssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(CachedAllMeansAssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(Cached2AssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(CachedRegsAssignmentKernel)
-DECLARE_ASSIGNEMNT_KERNEL(BestCachedAssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(BaseAssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(CachedFixedAssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(CachedAllMeansAssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(Cached2AssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(CachedRegsAssignmentKernel)
+DECLARE_ASSIGNMENT_KERNEL(BestCachedAssignmentKernel)
 
 
 #define DECLARE_UPDATE_KERNEL(NAME)\

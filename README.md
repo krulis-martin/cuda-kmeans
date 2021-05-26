@@ -1,6 +1,8 @@
 # Highly optimized CUDA implementation of k-means algorithm
 
-A novel, highly-optimized CUDA implementation of the k-means clustering algorithm. The approach is documented in paper *Detailed Analysis and Optimization of CUDA K-means Algorithm*, currently accepted to ICPP'20 conference (in print).
+A novel, highly-optimized CUDA implementation of the k-means clustering algorithm. The approach is documented in a conference paper here (link to the paper text can be found [here](https://www.ksi.mff.cuni.cz/~kratochvil/)):
+
+> Kruliš, Martin, and Miroslav Kratochvíl. "[Detailed Analysis and Optimization of CUDA K-means Algorithm.](https://dl.acm.org/doi/abs/10.1145/3404397.3404426)" *49th International Conference on Parallel Processing -- ICPP*. 2020.
 
 This repository contains:
 
@@ -24,5 +26,24 @@ All collected measurements are [available here](results/).
 
 The code is available under MIT license.
 
-If you find any part of this project useful for your scientific research, please cite the paper mentioned above. (We will add a full citation when the paper is published).
+If you find any part of this project useful for your scientific research, please cite the paper mentioned above. The BibTeX entry would be as follows:
+
+```
+@inproceedings{krulis2020kmeans,
+ author = {Kruli\v{s}, Martin and Kratochv\'{\i}l, Miroslav},
+ title = {Detailed Analysis and Optimization of CUDA K-Means Algorithm},
+ year = {2020},
+ isbn = {9781450388160},
+ publisher = {Association for Computing Machinery},
+ address = {New York, NY, USA},
+ url = {https://doi.org/10.1145/3404397.3404426},
+ doi = {10.1145/3404397.3404426},
+ booktitle = {49th International Conference on Parallel Processing - ICPP},
+ articleno = {69},
+ numpages = {11},
+ keywords = {performance optimization, clustering, cuda, k-means},
+ location = {Edmonton, AB, Canada},
+ series = {ICPP '20}
+}
+```
 

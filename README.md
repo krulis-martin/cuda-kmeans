@@ -18,7 +18,8 @@ The code is ready to be extracted and used for other projects. We hope to provid
 We measured a speedup between roughly 10x and 1000x (depending on data size and dimensionality) over the current best open-source implementations (kmcuda). Our approach does not use any indexing structures, and relies only on the low-level optimizations and raw throughput of the GPUs. For 1024 clusters on 2 million datapoints in 32 dimensions, the implementation can run one k-means iteration in around
 
 - **104ms** on nVidia GTX 980
-- **25ms** on nVidia V100 SXM2
+- **25ms** on nVidia V100 (SXM2)
+- **18ms** on nVidia A100 (SXM4)
 
 All collected measurements are [available here](results/).
 

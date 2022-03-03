@@ -39,10 +39,12 @@ This directory holds all measured values from our experiments. For your convenie
 
 The **results from A100 GPUs** are not reported in the paper as they were
 collected _after_ the publication; we only provide them in this table to
-complement the quickly accessible performance overview. We thank LuxProvide for
-kindly making the testing hardware available within the MeluXina supercomputer
-early access programme; the measurements were performed by Luxembourg Centre
-for Systems Biomedicine.
+complement the quickly accessible performance overview. We thank
+[LuxProvide](https://luxprovide.lu/)
+for kindly making the testing hardware available within the
+[MeluXina supercomputer](https://docs.lxp.lu/system/overview/)
+early access programme; the measurements were performed by
+[Luxembourg Centre for Systems Biomedicine](https://wwwen.uni.lu/lcsb).
 
 ### Data Formats
 
